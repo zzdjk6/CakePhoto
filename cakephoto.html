@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <title>CakePhoto</title>
+        <link href="cakephoto.css" rel="stylesheet" type="text/css" />
+        <script src="jquery-1.8.2.min.js"></script>
+    </head>
+    <body>
+        <!-- start header -->
+        <div id="header">
+            <div id="logo">
+                <h1><a href="javascript:void(0);">CakePhoto <small>by 陈圣晗</small></a></h1>
+            </div>
+            <div id="menu">
+                <ul>
+                    <li><a id="export-image" href="javascript:void(0);">导出</a></li>
+                    <li><a id="toggle-original-image" href="javascript:void(0);">显示原图</a></li>
+                    <li><a id="jigsaw-mode" href="javascript:void(0);">拼图模式</a></li>
+                    <li><a id="undo" href="javascript:void(0);">撤销</a></li>
+                    <li><a id="redo" href="javascript:void(0);">重做</a></li>
+                </ul>
+            </div>
+        </div>
+        <hr />
+        <!-- end header -->
+        <!-- start page -->
+        <div id="page">
+            <!-- start content -->
+            <div class="content">
+                <img id="image" src="lena_color.jpg" style="display:none"/>
+                <br/>
+                <canvas id="canvas"></canvas>
+            </div>
+            <!-- end content -->
+            <!-- start sidebar -->
+            <div class="sidebar">
+                <ul>
+                    <li id="actions">
+                        <h2>基础操作</h2>
+                        <ul>
+                            <li><a id="action-rotate" href="javascript:void(0);">旋转90度</a></li>
+                            <li><a id="action-flip-horizontal" href="javascript:void(0);">水平翻转</a></li>
+                            <li><a id="action-flip-vertical" href="javascript:void(0);">垂直翻转</a></li>
+                            <li>
+                                <a id="action-scale-show" href="javascript:void(0);">放大缩小</a>
+                                <div style="margin-left: 20px;display: none">
+                                    宽度:<input id="scale-width" type="text"/>
+                                    <br/>
+                                    高度:<input id="scale-height" type="text"/>
+                                    <br/>
+                                    <button id="action-scale">
+                                        缩放
+                                    </button>
+                                </div>
+                            </li>
+                            <li><a id="action-clip" href="javascript:void(0);">裁剪图像</a></li>
+                        </ul>
+                        <h2>基本调整</h2>
+                        <ul>
+                            <li><a id="action-brighten" href="javascript:void(0);">增加亮度</a></li>
+                            <li><a id="action-darken" href="javascript:void(0);">减小亮度</a></li>
+                            <li><a id="action-histogram-equalization" href="javascript:void(0);">增强对比度</a></li>
+                            <li><a id="action-remove-redeye" href="javascript:void(0);">去除红眼</a></li>
+                        </ul>
+                        <h2>特效滤镜</h2>
+                        <ul>
+                            <li><a id="action-grayscale" href="javascript:void(0);">灰度照片</a></li>
+                            <li><a id="action-binaryzation" href="javascript:void(0);">黑白照片</a></li>
+                            <li><a id="action-inverse-color" href="javascript:void(0);">反色照片</a></li>
+                            <li><a id="action-smooth" href="javascript:void(0);">平滑照片</a></li>
+                            <li><a id="action-sharpen" href="javascript:void(0);">锐化照片</a></li>
+                            <li><a id="action-denoise" href="javascript:void(0);">照片去噪</a></li>
+                            <li><a id="action-edge-extract" href="javascript:void(0);">提取边缘</a></li>
+                            <li><a id="action-motion-blur" href="javascript:void(0);">增加运动模糊(beta)</a></li>
+                            <li><a id="action-motion-deblur" href="javascript:void(0);">去除运动模糊(beta)</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <!-- end sidebar -->
+            <br style="clear: both;" />
+        </div>
+        <!-- end page -->
+        <div id="page-save" style="diplay:none">
+            <div class="content">
+                <img id="image-save" src="" style="display: none;float:left"/>
+            </div>
+            <div class="sidebar" style="display: none">
+                <div class="hint">
+                    <h3>小提示：</h3>
+                    在右边的图像上单击右键，选择“图片另存为”即可
+                    <br/>
+                    <br/>
+                    <span id="page-save-back" class="button">
+                        返回
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div id="page-jigsaw" style="display: none">
+            <div class="content">
+                <canvas id="jigsaw" style="display:none"></canvas>
+            </div>
+            <div class="sidebar" style="display: none">
+                <div class="hint">
+                    <h3>小提示：</h3>
+                    把图片拖放到相应位置即可完成拼图~
+                    <br/>
+                    <br/>
+                    <span id="page-jigsaw-back" class="button">
+                        返回
+                    </span>
+                    <span id="page-jigsaw-export" class="button">
+                        保存
+                    </span>
+                </div>
+            </div>
+        </div>
+        <script>
+            //初始化吧标识编辑模式的全局变量
+            //1:单图编辑，2:拼图模式
+            var editMode = 1;
+                
+            $(document).ready(function(){                
+                //初始化边栏行为
+                $('#actions h2').parent().find('ul').hide();
+                $('#actions h2').parent().find('ul:first').show('medium');
+                $('#actions h2').click(function(){
+                    $('#actions h2').parent().find('ul').hide('medium');
+                    $(this).next('ul').show('medium');
+                });
+                
+                //初始化边栏操作样式
+                $('#actions a').hover(function(){
+                    $(this).animate({'font-size':'20px'}, 'fast');
+                }, function(){
+                    $(this).animate({'font-size':'16px'}, 'fast');
+                })
+                
+                //初始化toggle原图
+                $('#toggle-original-image').click(function(){
+                    $('#image').toggle('fast');
+                    if($(this).text() == '显示原图'){
+                        $(this).text('隐藏原图');
+                    }else{
+                        $(this).text('显示原图');
+                    }
+                });
+                
+                //初始化toggle缩放选项
+                $('#action-scale-show').click(function(){
+                    $(this).next().toggle('fast');
+                });
+                
+                //初始化拼图模式
+                $('#jigsaw-mode').click(function(){
+                    editMode = 2;
+                    $(this).parent().parent().fadeOut('fast');
+                    $('#page').fadeOut('fast',function(){
+                        $('#page-jigsaw').fadeIn('fast', function(){
+                            $('#page-jigsaw .sidebar').fadeIn('fast');
+                            $('#jigsaw').fadeIn('fast');
+                        });
+                    });
+                    
+                    var canvas = document.getElementById('jigsaw');
+                    var context = canvas.getContext('2d');
+                
+                    //初始化大小
+                    canvas.width = 720;
+                    canvas.height = 600;
+                
+                    //初始化背景
+                    context.fillStyle = "white";
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                    //初始化分割线
+                    context.beginPath();
+                    context.moveTo(0, 300);
+                    context.lineTo(720, 300);
+                    context.moveTo(360,300);
+                    context.lineTo(360,600);
+                    context.closePath();
+                    context.strokeStyle = "black";
+                    context.stroke();
+                    
+                    //绘制像素提示信息
+                    context.font = "italic bold 64px serif";
+                    context.fillStyle = "black";
+                    context.fillText('720 x 300',230,150);
+                    context.fillText('360 x 300',50,480);
+                    context.fillText('360 x 300',410,480);
+                
+                
+                    //初始化拖放
+                    canvas.ondragenter = function(e){e.preventDefault();};
+                    canvas.ondragover = function(e){e.preventDefault();};
+                    canvas.ondrop = function(e) {
+                        var canvasOffset = $(canvas).offset();
+                        var canvasX = Math.floor(e.pageX - canvasOffset.left);
+                        var canvasY = Math.floor(e.pageY - canvasOffset.top);
+                    
+                        var imageFile = e.dataTransfer.files[0];
+                        var reader = new FileReader();
+                        reader.readAsDataURL(imageFile);
+                        reader.onload = function(e) {
+                            var image = new Image(); 
+                            image.src = this.result;
+                            if(canvasY < 300){
+                                context.drawImage(image, 0, 0,720,300);
+                            }                            
+                            else if(canvasX < 360){
+                                context.drawImage(image, 0, 300,360,300);
+                            }
+                            else{
+                                context.drawImage(image, 360, 300,360,300);
+                            }
+                            
+                        }
+                        e.preventDefault();
+                    }
+                });
+                $('#page-jigsaw-back').click(function(){
+                    editMode = 1;
+                    $('#page-jigsaw').fadeOut('fast',function(){
+                        $('#jigsaw-mode').parent().parent().fadeIn('fast');
+                        $('#page').fadeIn('fast');
+                    });
+                });
+                $('#page-jigsaw-export').click(function(){
+                    document.getElementById('image-save').src = document.getElementById('jigsaw').toDataURL();
+                    $('#page-jigsaw').fadeOut('fast',function(){
+                        $('#page-save').fadeIn('fast', function(){
+                            $('#image-save').fadeIn('fast');
+                            $('#page-save .sidebar').fadeIn('fast');
+                        });
+                    });
+                });
+            });
+        </script>
+        <script>
+            //初始化全局变量(最好在将来采用命名空间)
+            var image = document.getElementById('image');
+            var canvas = document.getElementById('canvas');
+            var context = canvas.getContext('2d');//指向绘图上下文
+            var width;//快速访问当前图像的大小
+            var height;
+            var undoStack = [];//撤销和重做的栈
+            var redoStack = [];
+            var paint = false;//标识鼠标移动时是否要绘制图形
+            var startX;//记录鼠标移动的四个点
+            var startY;
+            var endX;
+            var endY;
+            var selectStartX;//记录选择区域
+            var selectStartY;
+            var selectWidth;
+            var selectHeight;
+            var beforeSelected;//用于鼠标选择区域后恢复原图
+            
+            //给定x,y,channel值，获取图像数组中的位置。注意：0-index based
+            function getIndexOfImageArray(x,y,channel){
+                var index = y*width*4+x*4+channel;
+                return index;
+            }
+            
+            function isArrayComplete(inputArray){
+                for (var i = 0; i < inputArray.length; i++) {
+                    if (!inputArray[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            
+            //注册图像加载后事件
+            image.addEventListener('load', function(){
+                width = image.width;
+                height = image.height;
+                
+                //图像最大宽度只能为720，若超过720，则按比例缩放至720
+                if(width > 720){
+                    var ratio = parseFloat(height) / parseFloat(width);
+                    width = 720;
+                    height = parseInt(width * ratio);
+                }
+                
+                //初始化canvas的长和宽
+                canvas.width = width;
+                canvas.height = height;
+                //在画布上绘制图像
+                context.drawImage(image, 0, 0, image.width, image.height, 0, 0, width, height);
+            });
+            
+            //注册canvas的拖放事件
+            canvas.ondragenter = function(e){e.preventDefault()};
+            canvas.ondragover = function(e){e.preventDefault()};
+            canvas.ondrop = function(e) {
+                var imageFile = e.dataTransfer.files[0];
+                var reader = new FileReader();
+                reader.readAsDataURL(imageFile);
+                reader.onload = function(e) {
+                    document.getElementById('image').src = this.result;
+                }
+                e.preventDefault();
+            }
+            
+            //注册鼠标在图像上的事件
+            $(canvas).mousedown(function(e) {
+                startX = e.pageX - this.offsetLeft;
+                startY = e.pageY - this.offsetTop;
+                endX = null;
+                endY = null;
+                paint = true;
+
+                //复原、保存图像本身
+                if (beforeSelected) {
+                    context.putImageData(beforeSelected, 0, 0);
+                }
+                beforeSelected = context.getImageData(0, 0, this.width, this.height);
+            });
+
+            $(canvas).mousemove(function(e) {
+
+                if (!paint) {
+                    return;
+                }
+
+                endX = e.pageX - this.offsetLeft;
+                endY = e.pageY - this.offsetTop;
+
+                context.clearRect(0, 0, this.width, this.height);
+                context.putImageData(beforeSelected, 0, 0);
+
+                var startx;
+                var starty;
+                var endx;
+                var endy;
+
+                //适应各种方向的绘制
+                if (startX > endX) {
+                    startx = endX;
+                    endx = startX;
+                } else {
+                    startx = startX;
+                    endx = endX;
+                }
+
+                if (startY > endY) {
+                    starty = endY;
+                    endy = startY;
+                } else {
+                    starty = startY;
+                    endy = endY;
+                }
+
+                selectStartX = startx;
+                selectStartY = starty;
+                selectWidth = endx - startx;
+                selectHeight = endy - starty;
+                context.strokeRect(selectStartX, selectStartY, selectWidth, selectHeight);
+            });
+
+            $(canvas).mouseup(function(e) {
+                paint = false;
+            });
+            
+            //注册导出图像事件
+            $('#export-image').click(function(){
+                $(this).parent().parent().fadeOut('fast');
+                
+                document.getElementById('image-save').src = canvas.toDataURL();
+                $('#page').fadeOut('fast',function(){
+                    $('#page-save').fadeIn('fast', function(){
+                        $('#image-save').fadeIn('fast');
+                        $('#page-save .sidebar').fadeIn('fast');
+                    });
+                });
+            });
+            $('#page-save-back').click(function(){
+                $('#page-save').fadeOut('fast',function(){
+                    console.log(editMode);
+                    if(editMode == 1){
+                        $('#export-image').parent().parent().fadeIn('fast');
+                        $('#page').fadeIn('fast');
+                    }else if(editMode == 2){
+                        $('#page-jigsaw').fadeIn('fast');
+                    }
+                });
+            });
+            
+            //注册撤销、重做
+            $('#undo').click(function(){
+                if(undoStack.length == 0){
+                    return;
+                }
+    
+                var imageData = undoStack.pop();
+                redoStack.push(context.getImageData(0,0,width,height));
+                width = imageData.width;
+                height = imageData.height;
+                canvas.width = width;
+                canvas.height = height;
+                context.putImageData(imageData,0,0);
+            });
+            
+            $('#redo').click(function(){
+                if(redoStack.length == 0){
+                    return;
+                }
+    
+                var imageData = redoStack.pop();
+                undoStack.push(context.getImageData(0,0,width,height));
+                width = imageData.width;
+                height = imageData.height;
+                canvas.width = width;
+                canvas.height = height;
+                context.putImageData(imageData,0,0);
+            });
+            
+            //注册各操作功能
+            $('#action-rotate').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);                
+                var tmpCanvas = document.createElement('canvas');
+                var tmpContext = tmpCanvas.getContext('2d');
+                tmpCanvas.width = width;
+                tmpCanvas.height = height;
+                tmpContext.putImageData(imageData, 0, 0);
+                
+                //由于旋转90度后，图像原先的长等于现在的宽，原先的宽等于现在的长
+                //而旋转后的图像宽度不能超过720，所以原图长度不能超过720，若超过，则按比例缩放之
+                if(height > 720){
+                    var ratio = parseFloat(width) / parseFloat(height);
+                    height = 720;
+                    width = parseInt(height * ratio);
+                }
+                canvas.width = width;
+                canvas.height = height;
+                
+                //保存绘图状态--缩放比例
+                context.save()
+                context.scale(parseFloat(width)/canvas.width, parseFloat(height)/canvas.height);
+                context.drawImage(tmpCanvas, 0, 0, tmpCanvas.width, tmpCanvas.height,0, 0, width, height);
+                //恢复绘图状态
+                context.restore();
+                
+                tmpCanvas.width = width;
+                tmpCanvas.height = height;
+                tmpContext.drawImage(canvas, 0, 0);
+                
+                //旋转90度后，图像原先的长等于现在的宽，原先的宽等于现在的长
+                var tmp = height;
+                height = width;
+                width = tmp;
+                
+                canvas.width = width;
+                canvas.height = height;
+
+                //保存绘图状态--中心点
+                context.save();
+                context.translate(tmpCanvas.height / 2, tmpCanvas.width / 2);
+                context.rotate(Math.PI / 2);
+                context.drawImage(tmpCanvas, -tmpCanvas.width / 2, -tmpCanvas.height / 2);
+                //恢复绘图状态
+                context.restore();
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-flip-horizontal').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);
+                var data = imageData.data;
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width/2;x++){
+                        for(var channel=0;channel<3;channel++){
+                            var indexA = getIndexOfImageArray(x, y, channel);
+                            var indexB = getIndexOfImageArray(width-x, y, channel);
+                            var tmp = data[indexA];
+                            data[indexA] = data[indexB];
+                            data[indexB] = tmp;
+                        }
+                    }
+                }
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-flip-vertical').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                for(var x=0;x<width;x++){
+                    for(var y=0;y<height/2;y++){
+                        for(var channel=0;channel<3;channel++){
+                            var indexA = getIndexOfImageArray(x, y, channel);
+                            var indexB = getIndexOfImageArray(x, height-y, channel);
+                            var tmp = data[indexA];
+                            data[indexA] = data[indexB];
+                            data[indexB] = tmp;
+                        }
+                    }
+                }
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-scale').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var targetWidth = parseInt($('#scale-width').val());
+                var targetHeight = parseInt($('#scale-height').val());
+                if(!targetWidth && !targetHeight){
+                    alert('宽度和高度，请至少输入一个，并且是合法的整数');
+                    return;
+                }
+                if(targetWidth > 720){
+                    alert('图像最宽只能720像素啦，请输入小一点的宽度值吧');
+                    return;
+                }
+                
+                //在临时画布上保存原始信息
+                var tmpCanvas = document.createElement('canvas');
+                var tmpContext = tmpCanvas.getContext('2d');
+                tmpCanvas.width = width;
+                tmpCanvas.height = height;
+                tmpContext.drawImage(canvas, 0, 0);
+                
+                //如果只输入了宽度或高度，则另一个按比例自动确定
+                if(!targetHeight){
+                    targetHeight = parseInt(targetWidth * (parseFloat(height)/width));
+                }
+                if(!targetWidth){
+                    targetWidth = parseInt(targetHeight * (parseFloat(width)/height));
+                }
+                
+                //调整画布
+                width = targetWidth;
+                height = targetHeight;
+                canvas.width = width;
+                canvas.height = height;
+
+                //保存绘图状态
+                context.save();    
+                context.scale(parseFloat(width)/tmpCanvas.width, parseFloat(height)/tmpCanvas.height);
+                context.drawImage(tmpCanvas, 0, 0);
+                //恢复绘图状态
+                context.restore();
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-clip').click(function(){
+                if(!selectStartX || !selectStartY || !selectWidth || !selectHeight){
+                    alert('请选择要在裁剪后保留下来的区域');
+                    return;
+                }
+    
+                //不要保留选择时的边框
+                context.putImageData(beforeSelected, 0, 0);
+                
+                undoStack.push(context.getImageData(0,0,width,height));
+                redoStack = [];
+                var imageData = context.getImageData(selectStartX,selectStartY,selectWidth,selectHeight);
+    
+                width = selectWidth;
+                height = selectHeight;
+                canvas.width = width;
+                canvas.height = height;
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-brighten').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        for(var channel=0;channel<3;channel++){
+                            var index = getIndexOfImageArray(x, y, channel);
+                            data[index] += 10;
+                        }
+                    }
+                }
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-darken').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);
+                var data = imageData.data;
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        for(var channel=0;channel<3;channel++){
+                            var index = getIndexOfImageArray(x, y, channel);
+                            data[index] -= 10;
+                        }
+                    }
+                }
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-histogram-equalization').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);
+                var data = imageData.data;
+                var length = data.length;
+                var area = width * height;
+    
+                var histR = new Array(256);
+                var histG = new Array(256);
+                var histB = new Array(256);
+    
+                var statR = new Array(256);
+                var statG = new Array(256);
+                var statB = new Array(256);
+    
+                var relR = new Array(256);
+                var relG = new Array(256);
+                var relB = new Array(256);
+    
+                //初始化数组
+                for(var i=0;i<256;i++){
+                    histR[i] = 0;
+                    histG[i] = 0;
+                    histB[i] = 0;
+                }
+    
+                for (var i = 0; i < length; i += 4) {
+                    //统计直方图
+                    //red
+                    histR[data[i]] ++;
+                    //green
+                    histG[data[i+1]] ++;
+                    //blue
+                    histB[data[i+2]] ++;
+                }
+    
+                //求百分比
+                for(var i=0;i<256;i++){
+                    histR[i] *= (1/area);
+                    histG[i] *= (1/area);
+                    histB[i] *= (1/area);
+                }
+    
+                //求累计百分比
+                statR[0] = histR[0];
+                statG[0] = histG[0];
+                statB[0] = histB[0];
+                for(var i=1;i<256;i++){
+                    statR[i] = statR[i-1] + histR[i];
+                    statG[i] = statG[i-1] + histG[i];
+                    statB[i] = statB[i-1] + histB[i];
+                }
+    
+                //求对应关系
+                for(var i=0;i<256;i++){
+                    relR[i] = statR[i] * 256;
+                    relG[i] = statG[i] * 256;
+                    relB[i] = statB[i] * 256;
+                }
+    
+                //遍历图像应用对应关系
+                for (var i = 0; i < length; i += 4) {
+                    //red
+                    data[i] = relR[data[i]];
+                    data[i+1] = relG[data[i+1]];
+                    data[i+2] = relB[data[i+2]];
+                }
+    
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-remove-redeye').click(function(){
+                if(!selectStartX || !selectStartY || !selectWidth || !selectHeight){
+                    alert('请选择要红眼区域');
+                    return;
+                }
+                context.putImageData(beforeSelected, 0, 0);
+                
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                for(var y=selectStartY;y<selectStartY+selectHeight;y++){
+                    for(var x=selectStartX;x<selectStartX+selectWidth;x++){
+                        var indexRed = getIndexOfImageArray(x, y, 0);
+                        var indexGreen = getIndexOfImageArray(x, y, 1);
+                        var indexBlue = getIndexOfImageArray(x, y, 2);
+                        
+                        var valueRed = data[indexRed];
+                        var valueGreen = data[indexGreen];
+                        var valueBlue = data[indexBlue];
+                        
+                        //简单的红眼判断
+                        if(valueRed > valueGreen + valueBlue){
+                            valueRed = (valueGreen + valueBlue)/2;
+                            valueGreen = (valueGreen + valueRed)/2;
+                            valueBlue = (valueBlue + valueRed)/2;
+                            
+                            data[indexRed] = valueRed;
+                            data[indexGreen] = valueGreen;
+                            data[indexBlue] = valueBlue;
+                        }
+                    }
+                }
+                
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-grayscale').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);
+                var data = imageData.data;
+                for (var i = 0; i < data.length; i += 4) {
+                    var valueRed = data[i];
+                    var valueGreen = data[i + 1];
+                    var valueBlue = data[i + 2];
+                    // RGB到灰度转换公式
+                    var valueGrey = 0.2126 * valueRed + 0.7152 * valueGreen + 0.0722 * valueBlue;
+                    data[i] = data[i + 1] = data[i + 2] = valueGrey;
+                }
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-binaryzation').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                for (var i = 0; i < data.length; i += 4) {
+                    var valueRed = data[i];
+                    var valueGreen = data[i + 1];
+                    var valueBlue = data[i + 2];
+                    var valueGrey = (0.2126 * valueRed + 0.7152 * valueGreen + 0.0722 * valueBlue >= 100) ? 255 : 0;
+                    data[i] = data[i + 1] = data[i + 2] = valueGrey;
+                }
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-inverse-color').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);
+                var data = imageData.data;
+                for (var i = 0; i < data.length; i += 4) {
+                    data[i] = 255 - data[i];
+                    data[i+1] = 255 - data[i+1];
+                    data[i+2] = 255 - data[i+2];
+                }
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-smooth').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var tmpCanvas = document.createElement('canvas');
+                var tmpContext = tmpCanvas.getContext('2d');
+                var tmpImageData = tmpContext.createImageData(width, height);
+                var tmpData = tmpImageData.data;
+
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        //边界点不处理
+                        if((x==0) || (y==0) || (x==width-1) || (y==height-1)){
+                            for(var channel=0;channel<4;channel++){
+                                tmpData[getIndexOfImageArray(x, y, channel)] = data[getIndexOfImageArray(x, y, channel)];
+                            }
+                            continue;
+                        }
+                        
+                        //非边界点
+                        for(var channel=0;channel<3;channel++){
+                            var indexArray = new Array(9);
+                            indexArray[0] = getIndexOfImageArray(x-1, y-1, channel);
+                            indexArray[1] = getIndexOfImageArray(x, y-1, channel);
+                            indexArray[2] = getIndexOfImageArray(x+1, y-1, channel);
+                            indexArray[3] = getIndexOfImageArray(x-1, y, channel);
+                            indexArray[4] = getIndexOfImageArray(x, y, channel);
+                            indexArray[5] = getIndexOfImageArray(x+1, y, channel);
+                            indexArray[6] = getIndexOfImageArray(x-1, y+1, channel);
+                            indexArray[7] = getIndexOfImageArray(x, y+1, channel);
+                            indexArray[8] = getIndexOfImageArray(x+1, y+1, channel);
+                            var value = 0;
+                            for(var i=0;i<9;i++){
+                                value += data[indexArray[i]];
+                            }
+                            value = value/9;
+                            tmpData[indexArray[4]] = value;
+                        }
+                        tmpData[getIndexOfImageArray(x, y, 3)] = 255;
+                        
+                    }
+                }
+                context.putImageData(tmpImageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-sharpen').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var tmpCanvas = document.createElement('canvas');
+                var tmpContext = tmpCanvas.getContext('2d');
+                var tmpImageData = tmpContext.createImageData(width, height);
+                var tmpData = tmpImageData.data;
+                var kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        //边界点不处理
+                        if((x==0) || (y==0) || (x==width-1) || (y==height-1)){
+                            for(var channel=0;channel<4;channel++){
+                                tmpData[getIndexOfImageArray(x, y, channel)] = data[getIndexOfImageArray(x, y, channel)];
+                            }
+                            continue;
+                        }
+                        
+                        //非边界点
+                        for(var channel=0;channel<3;channel++){
+                            var indexArray = new Array(9);
+                            indexArray[0] = getIndexOfImageArray(x-1, y-1, channel);
+                            indexArray[1] = getIndexOfImageArray(x, y-1, channel);
+                            indexArray[2] = getIndexOfImageArray(x+1, y-1, channel);
+                            indexArray[3] = getIndexOfImageArray(x-1, y, channel);
+                            indexArray[4] = getIndexOfImageArray(x, y, channel);
+                            indexArray[5] = getIndexOfImageArray(x+1, y, channel);
+                            indexArray[6] = getIndexOfImageArray(x-1, y+1, channel);
+                            indexArray[7] = getIndexOfImageArray(x, y+1, channel);
+                            indexArray[8] = getIndexOfImageArray(x+1, y+1, channel);
+                            var value = 0;
+                            for(var i=0;i<9;i++){
+                                value += kernel[i] * data[indexArray[i]];
+                            }
+                            tmpData[indexArray[4]] = value;
+                        }
+                        tmpData[getIndexOfImageArray(x, y, 3)] = 255;
+                        
+                    }
+                }
+                context.putImageData(tmpImageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-denoise').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var tmpCanvas = document.createElement('canvas');
+                var tmpContext = tmpCanvas.getContext('2d');
+                var tmpImageData = tmpContext.createImageData(width, height);
+                var tmpData = tmpImageData.data;
+
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        //边界点不处理
+                        if((x==0) || (y==0) || (x==width-1) || (y==height-1)){
+                            for(var channel=0;channel<4;channel++){
+                                tmpData[getIndexOfImageArray(x, y, channel)] = data[getIndexOfImageArray(x, y, channel)];
+                            }
+                            continue;
+                        }
+                        
+                        //非边界点
+                        for(var channel=0;channel<3;channel++){
+                            var indexArray = new Array(9);
+                            indexArray[0] = getIndexOfImageArray(x-1, y-1, channel);
+                            indexArray[1] = getIndexOfImageArray(x, y-1, channel);
+                            indexArray[2] = getIndexOfImageArray(x+1, y-1, channel);
+                            indexArray[3] = getIndexOfImageArray(x-1, y, channel);
+                            indexArray[4] = getIndexOfImageArray(x, y, channel);
+                            indexArray[5] = getIndexOfImageArray(x+1, y, channel);
+                            indexArray[6] = getIndexOfImageArray(x-1, y+1, channel);
+                            indexArray[7] = getIndexOfImageArray(x, y+1, channel);
+                            indexArray[8] = getIndexOfImageArray(x+1, y+1, channel);
+                            var values = new Array(9);
+                            for(var i=0;i<9;i++){
+                                values[i] = data[indexArray[i]];
+                            }
+                            values = values.sort(function(a,b){
+                                return a-b;
+                            });
+
+                            tmpData[indexArray[4]] = values[4];
+                        }
+                        tmpData[getIndexOfImageArray(x, y, 3)] = 255;
+                        
+                    }
+                }
+                context.putImageData(tmpImageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-edge-extract').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var tmpCanvas = document.createElement('canvas');
+                var tmpContext = tmpCanvas.getContext('2d');
+                var tmpImageData = tmpContext.createImageData(width, height);
+                var tmpData = tmpImageData.data;
+                var kernelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+                var kernelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+
+                var imageData = context.getImageData(0, 0, width, height);
+                var data = imageData.data;
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        //边界点不处理
+                        if((x==0) || (y==0) || (x==width-1) || (y==height-1)){
+                            for(var channel=0;channel<4;channel++){
+                                tmpData[getIndexOfImageArray(x, y, channel)] = data[getIndexOfImageArray(x, y, channel)];
+                            }
+                            continue;
+                        }
+                        
+                        //非边界点
+                        for(var channel=0;channel<3;channel++){
+                            var indexArray = new Array(9);
+                            indexArray[0] = getIndexOfImageArray(x-1, y-1, channel);
+                            indexArray[1] = getIndexOfImageArray(x, y-1, channel);
+                            indexArray[2] = getIndexOfImageArray(x+1, y-1, channel);
+                            indexArray[3] = getIndexOfImageArray(x-1, y, channel);
+                            indexArray[4] = getIndexOfImageArray(x, y, channel);
+                            indexArray[5] = getIndexOfImageArray(x+1, y, channel);
+                            indexArray[6] = getIndexOfImageArray(x-1, y+1, channel);
+                            indexArray[7] = getIndexOfImageArray(x, y+1, channel);
+                            indexArray[8] = getIndexOfImageArray(x+1, y+1, channel);
+                            var gY = 0;
+                            var gX = 0;
+                            for(var i=0;i<9;i++){
+                                gX += kernelX[i] * data[indexArray[i]];
+                                gY += kernelY[i] * data[indexArray[i]];
+                            }
+                            tmpData[indexArray[4]] = Math.abs(gX) + Math.abs(gY);
+                        }
+                        tmpData[getIndexOfImageArray(x, y, 3)] = 255;
+                        
+                    }
+                }
+                context.putImageData(tmpImageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-motion-blur').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                var dataLength = data.length;
+                
+                //生成图像三维矩阵
+                var pixels = new Array(height);
+                for(var i=0;i<height;i++){
+                    pixels[i] = new Array(width);
+                    for(var j=0;j<width;j++){
+                        pixels[i][j] = new Array(3);
+                    }
+                }
+                
+                //生成临时三维矩阵
+                var tmpPixels = new Array(height);
+                for(var i=0;i<height;i++){
+                    tmpPixels[i] = new Array(width);
+                    for(var j=0;j<width;j++){
+                        tmpPixels[i][j] = new Array(3);
+                    }
+                }
+                
+                //载入图像数据
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        for(var k=0;k<3;k++){
+                            pixels[y][x][k] = data[y*width*4 + x*4+k];
+                            tmpPixels[y][x][k] = data[y*width*4 + x*4+k];
+                        }
+                    }
+                }
+                
+                //横向10格均值平滑，相当于水平移动10个像素
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        for(var k=0;k<3;k++){
+                            if(x>=10){
+                                var v = 0;
+                                for(var l=0;l<10;l++){
+                                    v += 1.0/10 * tmpPixels[y][x-l][k];
+                                }
+                                pixels[y][x][k] = v;
+                            }else if(x>0){
+                                var v = 0;
+                                for(var l=0;l<x;l++){
+                                    v += 1.0/x * tmpPixels[y][x-l][k];
+                                }
+                                pixels[y][x][k] = v; 
+                            }
+                        }
+                    }
+                }
+                
+                //把结果存回图像数据中
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        for(var k=0;k<3;k++){
+                            data[y*width*4 + x*4+k] = pixels[y][x][k];
+                        }
+                    }
+                }
+                
+                //显示模糊后的图像
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+            
+            $('#action-motion-deblur').click(function(){
+                undoStack.push(context.getImageData(0, 0, width, height));
+                redoStack = [];
+                
+                var imageData = context.getImageData(0, 0, width, height);                
+                var data = imageData.data;
+                var dataLength = data.length;
+                
+                //生成图像三维矩阵
+                var pixels = new Array(height);
+                for(var i=0;i<height;i++){
+                    pixels[i] = new Array(width);
+                    for(var j=0;j<width;j++){
+                        pixels[i][j] = new Array(3);
+                    }
+                }
+                
+                //生成临时三维矩阵
+                var tmpPixels = new Array(height);
+                for(var i=0;i<height;i++){
+                    tmpPixels[i] = new Array(width);
+                    for(var j=0;j<width;j++){
+                        tmpPixels[i][j] = new Array(3);
+                    }
+                }
+                
+                //载入图像数据
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        for(var k=0;k<3;k++){
+                            pixels[y][x][k] = data[y*width*4 + x*4+k];
+                            tmpPixels[y][x][k] = data[y*width*4 + x*4+k];
+                        }
+                    }
+                }
+                
+                //g(n) = u(n) - u(n-1) + g(n-D-1),pixels是g
+                for(var i=0;i<10;i++){
+                    for(var y=0;y<height;y++){
+                        for(var x=0;x<width;x++){
+                            for(var k=0;k<3;k++){
+                                if(x>0){
+                                    var v = 0;
+                                    v = tmpPixels[y][x][k] - tmpPixels[y][x-1][k];
+                                    v += pixels[y][x][k];
+                                    pixels[y][x][k] = v;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                //把结果存回图像数据中
+                for(var y=0;y<height;y++){
+                    for(var x=0;x<width;x++){
+                        for(var k=0;k<3;k++){
+                            data[y*width*4 + x*4+k] = pixels[y][x][k];
+                        }
+                    }
+                }
+                
+                //显示去模糊后的图像
+                context.putImageData(imageData, 0, 0);
+                
+                //清空缓存的全局变量
+                beforeSelected = null;
+                selectStartX = selectStartY = selectWidth = selectHeight = null;
+            });
+        </script>
+    </body>
+</html>

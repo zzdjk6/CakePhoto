@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <title>CakePhoto</title>
+        <link href="cakephoto.css" rel="stylesheet" type="text/css" />
+        <script src="jquery-1.8.2.min.js"></script>
+    </head>
+    <body>
+        <!-- start header -->
+        <div id="header">
+            <div id="logo">
+                <h1><a href="javascript:void(0);">CakePhoto <small>by 陈圣晗</small></a></h1>
+            </div>
+            <div id="menu">
+                <ul>
+                    <li>
+                        <a id="export-image" href="javascript:void(0);">导出</a>
+                    </li>
+                    <li>
+                        <a id="edit-mode" href="cakePhoto2.html">编辑模式</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <hr />
+        <div id="page">
+            <div class="content">
+                <canvas id="jigsaw"></canvas>
+            </div>
+            <div class="sidebar">
+                <ul>
+                    <li id="actions">
+                        <h2>拼图模板</h2>
+                        <ul>
+                            <li>
+                                <a id="mode-1" href="javascript:void(0);">上一下一</a>
+                            </li>
+                            <li>
+                                <a id="mode-2" href="javascript:void(0);">左一右一</a>
+                            </li>
+                            <li>
+                                <a id="mode-3" href="javascript:void(0);">上一下二</a>
+                            </li>
+                            <li>
+                                <a id="mode-4" href="javascript:void(0);">上二下一</a>
+                            </li>
+                            <li>
+                                <a id="mode-5" href="javascript:void(0);">左一右二</a>
+                            </li>
+                            <li>
+                                <a id="mode-6" href="javascript:void(0);">左二右一</a>
+                            </li>
+
+
+                        </ul>
+                    </li>
+                </ul>
+                <div class="hint">
+                    <h3>小提示：</h3>
+                    把图片拖放到相应位置即可~
+                </div>
+            </div>
+        </div>
+        <div id="page-save" style="diplay:none">
+            <div class="content">
+                <img id="image-save" src="" style="display: none;float:left"/>
+            </div>
+            <div class="sidebar" style="display: none">
+                <div class="hint">
+                    <h3>小提示：</h3>
+                    在右边的图像上单击右键，选择“图片另存为”即可
+                    <br/>
+                    <br/>
+                    <span id="page-save-back" class="button"> 返回 </span>
+                </div>
+            </div>
+        </div>
+        <script>
+            //初始化边栏行为
+            $('#actions h2').parent().find('ul').hide();
+            $('#actions h2').parent().find('ul:first').show('medium');
+            $('#actions h2').click(function() {
+                $('#actions h2').parent().find('ul').hide('medium');
+                $(this).next('ul').show('medium');
+            });
+
+            //初始化边栏操作样式
+            $('#actions a').hover(function() {
+                $(this).animate({
+                    'font-size' : '20px'
+                }, 'fast');
+            }, function() {
+                $(this).animate({
+                    'font-size' : '16px'
+                }, 'fast');
+            })
+
+            //初始化toggle缩放选项
+            $('#action-scale-show').click(function() {
+                $(this).next().toggle('fast');
+            });
+            
+            //注册导出图像事件
+            $('#export-image').click(function() {
+                $(this).parent().parent().fadeOut('fast');
+
+                document.getElementById('image-save').src = $("#jigsaw")[0].toDataURL();
+                $('#page').fadeOut('fast', function() {
+                    $('#page-save').fadeIn('fast', function() {
+                        $('#image-save').fadeIn('fast');
+                        $('#page-save .sidebar').fadeIn('fast');
+                    });
+                });
+            });
+            $('#page-save-back').click(function() {
+                $('#page-save').fadeOut('fast', function() {
+                    $('#export-image').parent().parent().fadeIn('fast');
+                    $('#page').fadeIn('fast');
+                });
+            });
+        </script>
+        <script src="Jigsaw.js"></script>
+        <script>
+            var jigsaw = new Jigsaw('jigsaw');
+            jigsaw.changeMode(1);
+        </script>
+        <script>
+            $("#actions a").click(function(){
+                jigsaw.changeMode(this.id.split("-")[1]);
+            });
+        </script>
+    </body>
+</html>

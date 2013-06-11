@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <title>CakePhoto</title>
+        <link href="cakephoto.css" rel="stylesheet" type="text/css" />
+        <script src="jquery-1.8.2.min.js"></script>
+    </head>
+    <body>
+        <!-- start header -->
+        <div id="header">
+            <div id="logo">
+                <h1><a href="javascript:void(0);">CakePhoto <small>by 陈圣晗</small></a></h1>
+            </div>
+            <div id="menu">
+                <ul>
+                    <li>
+                        <a id="export-image" href="javascript:void(0);">导出</a>
+                    </li>
+                    <li>
+                        <a id="toggle-original-image" href="javascript:void(0);">显示原图</a>
+                    </li>
+                    <li>
+                        <a href="jigsaw.html">拼图模式</a>
+                    </li>
+                    <li>
+                        <a id="undo" href="javascript:void(0);">撤销</a>
+                    </li>
+                    <li>
+                        <a id="redo" href="javascript:void(0);">重做</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <hr />
+        <!-- end header -->
+        <!-- start page -->
+        <div id="page">
+            <!-- start content -->
+            <div class="content">
+                <img id="image" src="lena_color.jpg" style="display:none"/>
+                <br/>
+                <canvas id="canvas"></canvas>
+            </div>
+            <!-- end content -->
+            <!-- start sidebar -->
+            <div class="sidebar">
+                <ul>
+                    <li id="actions">
+                        <h2>基础操作</h2>
+                        <ul>
+                            <li>
+                                <a id="action-rotate" href="javascript:void(0);">旋转90度</a>
+                            </li>
+                            <li>
+                                <a id="action-flip-horizontal" href="javascript:void(0);">水平翻转</a>
+                            </li>
+                            <li>
+                                <a id="action-flip-vertical" href="javascript:void(0);">垂直翻转</a>
+                            </li>
+                            <li>
+                                <a id="action-scale-show" href="javascript:void(0);">放大缩小</a>
+                                <div style="margin-left: 20px;display: none">
+                                    宽度:
+                                    <input id="scale-width" type="text"/>
+                                    <br/>
+                                    高度:
+                                    <input id="scale-height" type="text"/>
+                                    <br/>
+                                    <button id="action-scale">
+                                        缩放
+                                    </button>
+                                </div>
+                            </li>
+                            <li>
+                                <a id="action-clip" href="javascript:void(0);">裁剪图像</a>
+                            </li>
+                        </ul>
+                        <h2>基本调整</h2>
+                        <ul>
+                            <li>
+                                <a id="action-brighten" href="javascript:void(0);">增加亮度</a>
+                            </li>
+                            <li>
+                                <a id="action-darken" href="javascript:void(0);">减小亮度</a>
+                            </li>
+                            <li>
+                                <a id="action-histogram-equalization" href="javascript:void(0);">增强对比度</a>
+                            </li>
+                            <li>
+                                <a id="action-remove-redeye" href="javascript:void(0);">去除红眼</a>
+                            </li>
+                        </ul>
+                        <h2>特效滤镜</h2>
+                        <ul>
+                            <li>
+                                <a id="action-grayscale" href="javascript:void(0);">灰度照片</a>
+                            </li>
+                            <li>
+                                <a id="action-binaryzation" href="javascript:void(0);">黑白照片</a>
+                            </li>
+                            <li>
+                                <a id="action-inverse-color" href="javascript:void(0);">反色照片</a>
+                            </li>
+                            <li>
+                                <a id="action-smooth" href="javascript:void(0);">平滑照片</a>
+                            </li>
+                            <li>
+                                <a id="action-sharpen" href="javascript:void(0);">锐化照片</a>
+                            </li>
+                            <li>
+                                <a id="action-denoise" href="javascript:void(0);">照片去噪</a>
+                            </li>
+                            <li>
+                                <a id="action-edge-extract" href="javascript:void(0);">提取边缘</a>
+                            </li>
+                            <li>
+                                <a id="action-motion-blur" href="javascript:void(0);">增加运动模糊(beta)</a>
+                            </li>
+                            <li>
+                                <a id="action-motion-deblur" href="javascript:void(0);">去除运动模糊(beta)</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <!-- end sidebar -->
+            <br style="clear: both;" />
+        </div>
+        <!-- end page -->
+        <div id="page-save" style="diplay:none">
+            <div class="content">
+                <img id="image-save" src="" style="display: none;float:left"/>
+            </div>
+            <div class="sidebar" style="display: none">
+                <div class="hint">
+                    <h3>小提示：</h3>
+                    在右边的图像上单击右键，选择“图片另存为”即可
+                    <br/>
+                    <br/>
+                    <span id="page-save-back" class="button"> 返回 </span>
+                </div>
+            </div>
+        </div>
+        <script>             
+            //初始化边栏行为
+            $('#actions h2').parent().find('ul').hide();
+            $('#actions h2').parent().find('ul:first').show('medium');
+            $('#actions h2').click(function(){
+                $('#actions h2').parent().find('ul').hide('medium');
+                $(this).next('ul').show('medium');
+            });
+                
+            //初始化边栏操作样式
+            $('#actions a').hover(function(){
+                $(this).animate({'font-size':'20px'}, 'fast');
+            }, function(){
+                $(this).animate({'font-size':'16px'}, 'fast');
+            })
+                
+            //初始化toggle原图
+            $('#toggle-original-image').click(function(){
+                $('#image').toggle('fast');
+                if($(this).text() == '显示原图'){
+                    $(this).text('隐藏原图');
+                }else{
+                    $(this).text('显示原图');
+                }
+            });
+            
+            //初始化toggle缩放选项
+            $('#action-scale-show').click(function(){
+                $(this).next().toggle('fast');
+            });
+            
+            //注册导出图像事件
+            $('#export-image').click(function() {
+                $(this).parent().parent().fadeOut('fast');
+
+                document.getElementById('image-save').src = $("#canvas")[0].toDataURL();
+                $('#page').fadeOut('fast', function() {
+                    $('#page-save').fadeIn('fast', function() {
+                        $('#image-save').fadeIn('fast');
+                        $('#page-save .sidebar').fadeIn('fast');
+                    });
+                });
+            });
+            $('#page-save-back').click(function() {
+                $('#page-save').fadeOut('fast', function() {
+                    $('#export-image').parent().parent().fadeIn('fast');
+                    $('#page').fadeIn('fast');
+                });
+            });
+        </script>
+        <script src="CakePhoto.js"></script>
+        <script src="ImageLoadListener.js"></script>
+        <script src="DragDropListener.js"></script>
+        <script src="SelectListener.js"></script>
+        <script src="BasicEditor.js"></script>
+        <script src="Filter.js"></script>
+        <script>
+            //初始化全局对象
+            var cakePhoto = new CakePhoto('image','canvas');
+            cakePhoto.addImageLoadListener(ImageLoadListener);
+            cakePhoto.addDragDropListener(DragDropListener);
+            cakePhoto.addSelectListener(SelectListener);
+            cakePhoto.bindBasicEditor(BasicEditor);
+            cakePhoto.bindFilter(Filter);
+        </script>
+
+        <script>
+            //撤销
+            $('#undo').click(function() {
+                cakePhoto.basicEditor.undo();
+            });
+            
+            //重做
+            $('#redo').click(function() {
+                cakePhoto.basicEditor.redo();
+            });
+
+            //旋转90度
+            $('#action-rotate').click(function() {
+                cakePhoto.basicEditor.rotate();
+            });
+            
+            //水平翻转
+            $('#action-flip-horizontal').click(function() {
+                cakePhoto.basicEditor.flipHorizontal();
+            });
+
+            //垂直翻转
+            $('#action-flip-vertical').click(function() {
+                cakePhoto.basicEditor.flipVertical();
+            });
+
+            //缩放
+            $('#action-scale').click(function() {
+                var targetWidth = parseInt($('#scale-width').val());
+                var targetHeight = parseInt($('#scale-height').val());
+                if (!targetWidth && !targetHeight) {
+                    alert('宽度和高度，请至少输入一个，并且是合法的整数');
+                    return;
+                }
+                if (targetWidth > 720) {
+                    alert('图像最宽只能720像素啦，请输入小一点的宽度值吧');
+                    return;
+                }
+                cakePhoto.basicEditor.scale(targetWidth,targetHeight);
+            });
+            
+            //裁剪
+            $('#action-clip').click(function() {
+                if (!cakePhoto.selected.startX || !cakePhoto.selected.startY || !cakePhoto.selected.width || !cakePhoto.selected.height) {
+                    alert('请选择要在裁剪后保留下来的区域');
+                    return;
+                }
+                cakePhoto.basicEditor.clip();
+            });
+
+            //变亮
+            $('#action-brighten').click(function() {
+                cakePhoto.basicEditor.changeBrightness(10);
+            });
+
+            //变暗
+            $('#action-darken').click(function() {
+                cakePhoto.basicEditor.changeBrightness(-10);
+            });
+
+            //直方图均衡化
+            $('#action-histogram-equalization').click(function() {
+                cakePhoto.basicEditor.histogramEqualize();
+            });
+
+            //去除红眼
+            $('#action-remove-redeye').click(function() {
+                if (!cakePhoto.selected.startX || !cakePhoto.selected.startY || !cakePhoto.selected.width || !cakePhoto.selected.height) {
+                    alert('请选择红眼区域');
+                    return;
+                }
+                
+                cakePhoto.drawBeforeSelected();
+                
+                cakePhoto.basicEditor.removeRedEye();
+
+            });
+
+            //灰度滤镜
+            $('#action-grayscale').click(function() {
+                cakePhoto.filter.grayscale();
+            });
+
+            //二值化
+            $('#action-binaryzation').click(function() {
+                cakePhoto.filter.binarize();
+            });
+
+            //反色
+            $('#action-inverse-color').click(function() {
+                cakePhoto.filter.inverseColor();
+            });
+
+            //平滑
+            $('#action-smooth').click(function() {
+                cakePhoto.filter.smooth();
+            });
+
+            //锐化
+            $('#action-sharpen').click(function() {
+                cakePhoto.filter.sharpen();
+            });
+
+            //去噪
+            $('#action-denoise').click(function() {
+                cakePhoto.filter.denoise();
+            });
+
+            //边缘检测
+            $('#action-edge-extract').click(function() {
+                cakePhoto.filter.edgeExtract();
+            });
+
+            //运动模糊
+            $('#action-motion-blur').click(function() {
+                cakePhoto.filter.motionBlur();
+            });
+
+            //去除运动模糊
+            $('#action-motion-deblur').click(function() {
+                cakePhoto.filter.motionDeblur();
+            });
+        </script>
+    </body>
+</html>
